@@ -1,33 +1,25 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net.Http;
 using System.Net;
 using System.Text;
-
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Threading;
-
-using System.Xml;
 using Newtonsoft.Json;
-using System.Security.Policy;
-using System.Security.Cryptography;
 using ConsoleApp3;
-using System.Runtime.InteropServices;
-using System.Diagnostics;
-using System.Xml.Linq;
-using Zen.Barcode;
+using ZXing;
 using System.Drawing;
 using System.IO;
+using System.Windows.Controls;
+using System.Windows.Media.Imaging;
+using Color = System.Drawing.Color;
+using System.Drawing.Imaging;
+using System.Windows.Media.Animation;
+using System.Windows.Threading;
+using Point = System.Windows.Point;
 
 namespace Tyxy
 {
@@ -35,15 +27,192 @@ namespace Tyxy
     /// </summary>
     public partial class MainWindow : Window
     {
+        private Random random = new Random();
+
         public MainWindow()
         {
             InitializeComponent();
             this.Title += "    UserID：" + _Config._appAccNo.ToString();
             this.Loaded += MainWindow_Loaded;
-            
+           
+        }
+        /// <summary>
+        /// 随机数
+        /// </summary>
+        private Random _random = new Random();
+
+        //布局宽490 高210 显示宽430 高180
+        //阵距4行8列 点之间的距离 X轴Y轴都是70
+        /// <summary>
+        /// 点信息阵距
+        /// </summary>
+        private PointInfo[,] _points = new PointInfo[8, 4];
+
+        /// <summary>
+        /// 计时器
+        /// </summary>
+        private DispatcherTimer _timer;
+
+
+        /// <summary>
+        /// 初始化阵距
+        /// </summary>
+        private void Init()
+        {
+
+            //生成阵距的点
+            for (int i = 0; i < 8; i++)
+            {
+                for (int j = 0; j < 4; j++)
+                {
+                    double x = _random.Next(-11, 11);
+                    double y = _random.Next(-6, 6);
+                    _points[i, j] = new PointInfo()
+                    {
+                        X = i * 110,
+                        Y = j * 135,
+                        SpeedX = x / 24,
+                        SpeedY = y / 24,
+                        DistanceX = _random.Next(35, 106),
+                        DistanceY = _random.Next(20, 40),
+                        MovedX = 0,
+                        MovedY = 0,
+                        PolygonInfoList = new List<PolygonInfo>()
+                    };
+                }
+            }
+
+            //byte r = (byte)_random.Next(0, 11);
+            //byte g = (byte)_random.Next(100, 201);
+            //int intb = g + _random.Next(50, 101);
+
+            byte r = (byte)_random.Next(200, 256); // 红色较高
+            byte g = (byte)_random.Next(50, 150);  // 绿色适中
+            int intb = g + _random.Next(150, 255); // 蓝色较高
+            if (intb > 255)
+                intb = 255;
+            byte b = (byte)intb;
+
+            //上一行取2个点 下一行取1个点
+            for (int i = 0; i < 7; i++)
+            {
+                for (int j = 0; j < 3; j++)
+                {
+                    Polygon poly = new Polygon();
+                    poly.Points.Add(new Point(_points[i, j].X, _points[i, j].Y));
+                    _points[i, j].PolygonInfoList.Add(new PolygonInfo() { PolygonRef = poly, PointIndex = 0 });
+                    poly.Points.Add(new Point(_points[i + 1, j].X, _points[i + 1, j].Y));
+                    _points[i + 1, j].PolygonInfoList.Add(new PolygonInfo() { PolygonRef = poly, PointIndex = 1 });
+                    poly.Points.Add(new Point(_points[i + 1, j + 1].X, _points[i + 1, j + 1].Y));
+                    _points[i + 1, j + 1].PolygonInfoList.Add(new PolygonInfo() { PolygonRef = poly, PointIndex = 2 });
+                    poly.Fill = new SolidColorBrush(System.Windows.Media.Color.FromRgb(r, g, (byte)b));
+                    SetColorAnimation(poly);
+                    layout.Children.Add(poly);
+                }
+            }
+
+            //上一行取1个点 下一行取2个点
+            for (int i = 0; i < 7; i++)
+            {
+                for (int j = 0; j < 3; j++)
+                {
+                    Polygon poly = new Polygon();
+                    poly.Points.Add(new Point(_points[i, j].X, _points[i, j].Y));
+                    _points[i, j].PolygonInfoList.Add(new PolygonInfo() { PolygonRef = poly, PointIndex = 0 });
+                    poly.Points.Add(new Point(_points[i, j + 1].X, _points[i, j + 1].Y));
+                    _points[i, j + 1].PolygonInfoList.Add(new PolygonInfo() { PolygonRef = poly, PointIndex = 1 });
+                    poly.Points.Add(new Point(_points[i + 1, j + 1].X, _points[i + 1, j + 1].Y));
+                    _points[i + 1, j + 1].PolygonInfoList.Add(new PolygonInfo() { PolygonRef = poly, PointIndex = 2 });
+                    poly.Fill = new SolidColorBrush(System.Windows.Media.Color.FromRgb(r, g, (byte)b));
+                    SetColorAnimation(poly);
+                    layout.Children.Add(poly);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 设置颜色动画
+        /// </summary>
+        /// <param name="polygon">多边形</param>
+        private void SetColorAnimation(UIElement polygon)
+        {
+            //颜色动画的时间 1-4秒随机
+            Duration dur = new Duration(new TimeSpan(0, 0, _random.Next(1, 5)));
+            //故事版
+            Storyboard sb = new Storyboard()
+            {
+                Duration = dur
+            };
+            sb.Completed += (S, E) => //动画执行完成事件
+            {
+                //颜色动画完成之后 重新set一个颜色动画
+                SetColorAnimation(polygon);
+            };
+            //颜色动画
+            ////颜色的RGB
+            //byte r = (byte)_random.Next(0, 11);
+            //byte g = (byte)_random.Next(100, 201);
+            //int intb = g + _random.Next(50, 101);
+            // 设置颜色为粉色的 RGB 范围
+            byte r = (byte)_random.Next(200, 256); // 红色较高
+            byte g = (byte)_random.Next(50, 150);  // 绿色适中
+            int intb = g + _random.Next(150, 255); // 蓝色较高
+
+            if (intb > 255)
+                intb = 255;
+            byte b = (byte)intb;
+            ColorAnimation ca = new ColorAnimation()
+            {
+                To = System.Windows.Media.Color.FromRgb(r, g, b),
+                Duration = dur
+            };
+            Storyboard.SetTarget(ca, polygon);
+            Storyboard.SetTargetProperty(ca, new PropertyPath("Fill.Color"));
+            sb.Children.Add(ca);
+            sb.Begin(this);
+        }
+
+        /// <summary>
+        /// 多边形变化动画
+        /// </summary>
+        void PolyAnimation(object sender, EventArgs e)
+        {
+            //不改变阵距最外边一层的点
+            for (int i = 1; i < 7; i++)
+            {
+                for (int j = 1; j < 3; j++)
+                {
+                    PointInfo pointInfo = _points[i, j];
+                    pointInfo.X += pointInfo.SpeedX;
+                    pointInfo.Y += pointInfo.SpeedY;
+                    pointInfo.MovedX += pointInfo.SpeedX;
+                    pointInfo.MovedY += pointInfo.SpeedY;
+                    if (pointInfo.MovedX >= pointInfo.DistanceX || pointInfo.MovedX <= -pointInfo.DistanceX)
+                    {
+                        pointInfo.SpeedX = -pointInfo.SpeedX;
+                        pointInfo.MovedX = 0;
+                    }
+                    if (pointInfo.MovedY >= pointInfo.DistanceY || pointInfo.MovedY <= -pointInfo.DistanceY)
+                    {
+                        pointInfo.SpeedY = -pointInfo.SpeedY;
+                        pointInfo.MovedY = 0;
+                    }
+                    //改变多边形的点
+                    foreach (PolygonInfo pInfo in _points[i, j].PolygonInfoList)
+                    {
+                        pInfo.PolygonRef.Points[pInfo.PointIndex] = new Point(pointInfo.X, pointInfo.Y);
+                    }
+                }
+            }
         }
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
+            Init();
+            //注册帧动画
+            _timer = new System.Windows.Threading.DispatcherTimer();
+            _timer.Tick += new EventHandler(PolyAnimation);
+            _timer.Interval = new TimeSpan(0, 0, 0, 0, 1000 / 24);//一秒钟刷新24次
+            _timer.Start();
             try {
                 //Console.WriteLine(GetCookies.GetCookie());
                 cookiestextbox.Text = GetCookies.GetCookie();
@@ -419,48 +588,40 @@ namespace Tyxy
             // 构造分享WiFi的字符串内容
             string wifiString = $"tyxy|{cookiestextbox.Text}|{IDTextbox.Text}|{_Config._appAccNo}";
 
-            // 使用 Zen.Barcode 生成二维码
-            CodeQrBarcodeDraw qrcode = BarcodeDrawFactory.CodeQr;
-            System.Drawing.Image img = qrcode.Draw(wifiString, 20); // 40 是二维码大小比例
-
-            // 创建新的位图，用来处理颜色替换
-            Bitmap bitmap = new Bitmap(img);
-
-            // 遍历每个像素，替换白色部分为指定的颜色（43,43,43）
-            for (int x = 0; x < bitmap.Width; x++)
+            var qrWriter = new BarcodeWriter
             {
-                for (int y = 0; y < bitmap.Height; y++)
+                Format = BarcodeFormat.QR_CODE,
+                Options = new ZXing.Common.EncodingOptions
                 {
-                    // 获取当前像素颜色
-                    System.Drawing.Color pixelColor = bitmap.GetPixel(x, y);
-
-                    // 如果是白色（判断标准为255,255,255），将其替换为指定的颜色
-                    if (pixelColor.R == 255 && pixelColor.G == 255 && pixelColor.B == 255)
-                    {
-                       // bitmap.SetPixel(x, y, System.Drawing.Color.FromArgb(0, 0, 0));
-                    }
+                    Width = 300,
+                    Height = 300,
+                    Margin = 3    // 设置白边为0
                 }
-            }
-            // 遍历每个像素，替换白色部分为指定的颜色（43,43,43）
+            };
+            var bitmap = qrWriter.Write(wifiString);
+            // 创建透明背景图像
+            var transparentBitmap = new Bitmap(bitmap.Width, bitmap.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
             for (int x = 0; x < bitmap.Width; x++)
             {
                 for (int y = 0; y < bitmap.Height; y++)
                 {
-                    // 获取当前像素颜色
-                    System.Drawing.Color pixelColor = bitmap.GetPixel(x, y);
-
-                    if (pixelColor.R == 255 && pixelColor.G == 255 && pixelColor.B == 255)
+                    // 将白色背景改为透明
+                    var pixel = bitmap.GetPixel(x, y);
+                    if (pixel.R == 255 && pixel.G == 255 && pixel.B == 255)
                     {
-                        bitmap.SetPixel(x, y, System.Drawing.Color.FromArgb(0, 0, 0, 0)); // 设置为完全透明
+                        transparentBitmap.SetPixel(x, y, Color.FromArgb(0, 0, 0, 0)); // 透明
                     }
-
+                    else
+                    {
+                        transparentBitmap.SetPixel(x, y, Color.Black); // 黑色方块
+                    }
                 }
             }
             // 将 System.Drawing.Bitmap 转换为 BitmapImage
             BitmapImage bitmapImage = new BitmapImage();
             using (MemoryStream memory = new MemoryStream())
             {
-                bitmap.Save(memory, System.Drawing.Imaging.ImageFormat.Png); // 保存到内存流
+                transparentBitmap.Save(memory, System.Drawing.Imaging.ImageFormat.Png); // 保存到内存流
                 memory.Position = 0; // 重置流的位置
 
                 bitmapImage.BeginInit();
@@ -471,5 +632,96 @@ namespace Tyxy
             }
             QRImage.Source = bitmapImage;
         }
+
+        private void Window_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            try
+            {
+                this.DragMove();
+            }
+            catch { }
+        }
+
+        private void Image_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            // 打开 GitHub 的链接
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "https://github.com/Laster-dev/Tyxy",
+                UseShellExecute = true
+            });
+        }
+
+        private void Image_MouseLeftButtonDown_1(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            Environment.Exit(0);
+        }
     }
+    /// <summary>
+    /// 阵距点信息
+    /// </summary>
+    public class PointInfo
+    {
+        /// <summary>
+        /// X坐标
+        /// </summary>
+        public double X { get; set; }
+
+        /// <summary>
+        /// Y坐标
+        /// </summary>
+        public double Y { get; set; }
+
+        /// <summary>
+        /// X轴速度 wpf距离单位/二十四分之一秒
+        /// </summary>
+        public double SpeedX { get; set; }
+
+        /// <summary>
+        /// Y轴速度 wpf距离单位/二十四分之一秒
+        /// </summary>
+        public double SpeedY { get; set; }
+
+        /// <summary>
+        /// X轴需要移动的距离
+        /// </summary>
+        public double DistanceX { get; set; }
+
+        /// <summary>
+        /// Y轴需要移动的距离
+        /// </summary>
+        public double DistanceY { get; set; }
+
+        /// <summary>
+        /// X轴已经移动的距离
+        /// </summary>
+        public double MovedX { get; set; }
+
+        /// <summary>
+        /// Y轴已经移动的距离
+        /// </summary>
+        public double MovedY { get; set; }
+
+        /// <summary>
+        /// 多边形信息列表
+        /// </summary>
+        public List<PolygonInfo> PolygonInfoList { get; set; }
+    }
+
+    /// <summary>
+    /// 多边形信息
+    /// </summary>
+    public class PolygonInfo
+    {
+        /// <summary>
+        /// 对多边形的引用
+        /// </summary>
+        public Polygon PolygonRef { get; set; }
+
+        /// <summary>
+        /// 需要改变的点的索引
+        /// </summary>
+        public int PointIndex { get; set; }
+    }
+
 }

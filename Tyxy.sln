@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tyxy", "Tyxy.csproj", "{23D
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TyxyAndroid", "..\SampleMAUIApp-master\SampleMAUIApp-master\TyxyAndroid.csproj", "{1CCEBD3E-7E4E-4C1C-990C-CDEAA05F472F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "test", "..\test\test.csproj", "{1E189377-EE59-4AA9-A6E6-5105D13EA768}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -35,6 +37,14 @@ Global
 		{1CCEBD3E-7E4E-4C1C-990C-CDEAA05F472F}.Release|ARM64.ActiveCfg = Release|Any CPU
 		{1CCEBD3E-7E4E-4C1C-990C-CDEAA05F472F}.Release|ARM64.Build.0 = Release|Any CPU
 		{1CCEBD3E-7E4E-4C1C-990C-CDEAA05F472F}.Release|ARM64.Deploy.0 = Release|Any CPU
+		{1E189377-EE59-4AA9-A6E6-5105D13EA768}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1E189377-EE59-4AA9-A6E6-5105D13EA768}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1E189377-EE59-4AA9-A6E6-5105D13EA768}.Debug|ARM64.ActiveCfg = Debug|Any CPU
+		{1E189377-EE59-4AA9-A6E6-5105D13EA768}.Debug|ARM64.Build.0 = Debug|Any CPU
+		{1E189377-EE59-4AA9-A6E6-5105D13EA768}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1E189377-EE59-4AA9-A6E6-5105D13EA768}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1E189377-EE59-4AA9-A6E6-5105D13EA768}.Release|ARM64.ActiveCfg = Release|Any CPU
+		{1E189377-EE59-4AA9-A6E6-5105D13EA768}.Release|ARM64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
